@@ -28,30 +28,3 @@ No build step. No dependencies. No analytics.
 
 Only use this for documents you are allowed to download.
 
-## Project Files
-
-- `manifest.json` - extension config
-- `background.js` - download handler
-- `inject.js` - PDF capture hook
-- `content.js` - button logic
-- `utils.js` - shared helpers
-- `styles.css` - button styling
-- `icon*.png` - extension icons
-- `icon.svg` - editable icon source
-
-## Release
-
-For a Chrome extension ZIP, include only:
-
-```text
-manifest.json
-background.js
-content.js
-inject.js
-utils.js
-styles.css
-icon16.png
-icon32.png
-icon48.png
-icon128.png
-```
