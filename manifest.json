@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "StudyDrive PDF Downloader",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Download PDF documents from StudyDrive",
   "permissions": ["downloads"],
   "host_permissions": ["https://www.studydrive.net/*"],
