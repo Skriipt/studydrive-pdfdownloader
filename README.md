@@ -1,64 +1,57 @@
 # StudyDrive PDF Downloader
 
-Chromium extension that adds a simple `Download PDF` button to StudyDrive document pages.
+A small Chromium extension that adds a `Download PDF` button to StudyDrive document pages.
 
-The extension is intentionally small: no build step, no dependencies, no analytics and no external servers.
+No build step. No dependencies. No analytics.
 
-## Important
-
-Only use this extension for documents you are authorized to download. The extension does not bypass StudyDrive access controls.
-
-## Installation
+## Install
 
 1. Download or clone this repository.
-2. Open `chrome://extensions` in Chrome or another Chromium-based browser.
+2. Open `chrome://extensions`.
 3. Enable **Developer mode**.
 4. Click **Load unpacked**.
-5. Select this project folder.
+5. Select the project folder.
 
-## Usage
+## Use
 
 1. Log in to [studydrive.net](https://www.studydrive.net).
-2. Open a StudyDrive document page.
-3. Wait until the document preview has loaded.
-4. Click **Download PDF** in the bottom-right corner.
+2. Open a document page.
+3. Wait for the preview to load.
+4. Click **Download PDF**.
 
-## Files
+## Scope
 
-- `manifest.json` - Chrome extension manifest.
-- `background.js` - Starts the browser download.
-- `inject.js` - Captures PDF data loaded by the StudyDrive preview.
-- `content.js` - Adds and controls the download button.
-- `utils.js` - Shared helper functions.
-- `styles.css` - Button styling.
-- `icon*.png` - Extension icons.
-- `icon.svg` - Editable icon source.
-- `PRIVACY.md` - Privacy policy draft for GitHub and Chrome Web Store.
+- Runs only on `https://www.studydrive.net/*/doc/*`.
+- Downloads PDF data already loaded by the document preview.
+- Does not send data to external servers.
+- Does not bypass StudyDrive access controls.
 
-## Manual QA
+Only use this for documents you are allowed to download.
 
-Before publishing a new version:
+## Project Files
 
-1. Load the extension unpacked.
-2. Open a StudyDrive document page on `www.studydrive.net`.
-3. Confirm the button appears only on document pages.
-4. Confirm the button matches the page visually and does not cover important UI.
-5. Download a PDF and confirm the saved file opens correctly.
-6. Test a title with special characters and confirm the filename is valid.
+- `manifest.json` - extension config
+- `background.js` - download handler
+- `inject.js` - PDF capture hook
+- `content.js` - button logic
+- `utils.js` - shared helpers
+- `styles.css` - button styling
+- `icon*.png` - extension icons
+- `icon.svg` - editable icon source
 
-## Chrome Web Store
+## Release
 
-For a store upload, zip only the runtime files:
+For a Chrome extension ZIP, include only:
 
-- `manifest.json`
-- `background.js`
-- `content.js`
-- `inject.js`
-- `utils.js`
-- `styles.css`
-- `icon16.png`
-- `icon32.png`
-- `icon48.png`
-- `icon128.png`
-
-Also prepare screenshots, a support URL and the privacy text from `PRIVACY.md`.
+```text
+manifest.json
+background.js
+content.js
+inject.js
+utils.js
+styles.css
+icon16.png
+icon32.png
+icon48.png
+icon128.png
+```
