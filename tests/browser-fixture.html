@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StudyDrive downloader browser fixture</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 24px; font: 16px/1.5 system-ui; color: #183b35; background: #f3f8f7; }
+  main { max-width: 620px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  .controls button { padding: 8px 12px; font: inherit; }
+  #results { overflow-wrap: anywhere; }
+</style>
+<main>
+  <h1>Downloader browser fixture</h1>
+  <p>Simulated page state and Chrome APIs. No StudyDrive requests or real downloads.</p>
+  <div class="controls">
+    <button data-mode="complete" disabled>Open complete PDF</button>
+    <button data-mode="partial" disabled>Open partial PDF</button>
+    <button data-mode="incomplete" disabled>Open truncated PDF</button>
+    <button id="home" disabled>Go to homepage</button>
+  </div>
+  <p id="results" role="status">Loading runtime scripts...</p>
+</main>
+<script type="module">
+  const names = ['utils.js', 'background.js', 'inject.js', 'content.js'];
+  const sources = await Promise.all(names.map(async name => {
+    const response = await fetch('../' + name);
+    if (!response.ok) throw new Error('Missing runtime script: ' + name);
+    return response.text();
+  }));
+  const pdf = '%PDF-1.7\n1 0 obj\n<<>>\nendobj\nstartxref\n0\n%%EOF\n';
+  const calls = [];
+  let id = 122;
+  let mode = 'complete';
+  let handler;
+  class XHR extends EventTarget { open() {} send() {} }
+  const env = {
+    location: new URL('https://www.studydrive.net/de'),
+    sdWindow: {}, XMLHttpRequest: XHR,
+    addEventListener: window.addEventListener.bind(window),
+    removeEventListener: window.removeEventListener.bind(window),
+    dispatchEvent: window.dispatchEvent.bind(window),
+    setInterval: window.setInterval.bind(window),
+    setTimeout: window.setTimeout.bind(window), clearTimeout: window.clearTimeout.bind(window),
+    history: Object.fromEntries(['pushState', 'replaceState'].map(name => [name, (_state, _title, url) => {
+      env.location.href = new URL(url, env.location).href;
+    }])),
+    fetch: async () => new Response(mode === 'incomplete' ? '%PDF-1.7\npartial' : pdf, {
+      status: mode === 'partial' ? 206 : 200,
+      headers: { 'content-type': 'application/pdf', ...(mode === 'partial' ? { 'content-range': 'bytes 0-50/100' } : {}) }
+    })
+  };
+  const chrome = {
+    runtime: {
+      id: 'fixture-extension', onMessage: { addListener: fn => { handler = fn; } },
+      sendMessage: (message, callback) => handler(message, {
+        id: 'fixture-extension', frameId: 0, tab: { id: 42 }, url: env.location.href
+      }, callback)
+    },
+    downloads: { download: (options, callback) => {
+      calls.push({ filename: options.filename, base64: options.url.split(',')[1] });
+      document.getElementById('results').textContent = `Simulated downloads: ${calls.length}. Last filename: ${options.filename}`;
+      callback(calls.length);
+    } }
+  };
+  sources.forEach(source => new Function('window', 'globalThis', 'location', 'history', 'document', 'chrome', 'importScripts', source)(
+    env, env, env.location, env.history, document, chrome, () => {}
+  ));
+  async function load(modeToLoad) {
+    mode = modeToLoad;
+    id++;
+    env.sdWindow.document = { id, filename: `Lecture "${id}".pdf`,
+      file_preview: `https://cdn.studydrive.net/d/prod/documents/${id}/teaser/${id}.pdf?token=fixture` };
+    env.history.pushState(null, '', `https://www.studydrive.net/de/doc/example/${id}`);
+    const response = await env.fetch(env.sdWindow.document.file_preview);
+    await response.arrayBuffer();
+  }
+  window.fixture = { env, calls, load, expectedPdf: pdf };
+  for (const button of document.querySelectorAll('[data-mode]')) button.addEventListener('click', () => load(button.dataset.mode));
+  document.getElementById('home').addEventListener('click', () => env.history.pushState(null, '', '/de'));
+  for (const button of document.querySelectorAll('.controls button')) button.disabled = false;
+  document.getElementById('results').textContent = 'Ready. Open a PDF, then use the extension controls.';
+</script>
+</html>

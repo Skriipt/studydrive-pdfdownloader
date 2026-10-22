@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StudyDrive icon generator</title>
+<style>
+  body { max-width: 640px; margin: 40px auto; padding: 0 20px; font: 16px/1.5 system-ui; color: #183b35; }
+  #output { display: flex; align-items: end; gap: 24px; flex-wrap: wrap; margin-top: 24px; }
+  a { display: grid; justify-items: center; gap: 8px; color: #006f63; }
+  #error { color: #b42318; }
+</style>
+<h1>Generate extension icons</h1>
+<p>Select the repository's <code>icon.svg</code>, then save each PNG in the project root.</p>
+<label>SVG source <input id="source" type="file" accept="image/svg+xml,.svg"></label>
+<p id="error" role="status"></p>
+<div id="output"></div>
+<script>
+  async function generate(blob) {
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    try {
+      image.src = url;
+      await image.decode();
+      const links = [16, 32, 48, 128].map(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        canvas.getContext('2d').drawImage(image, 0, 0, size, size);
+        const link = document.createElement('a');
+        link.download = `icon${size}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.append(canvas, document.createTextNode(link.download));
+        return link;
+      });
+      document.getElementById('output').replaceChildren(...links);
+      document.getElementById('error').textContent = '';
+    } catch {
+      document.getElementById('output').replaceChildren();
+      document.getElementById('error').textContent = 'Could not render the SVG. Select icon.svg and try again.';
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  document.getElementById('source').addEventListener('change', event => {
+    const file = event.target.files[0];
+    if (file) void generate(file);
+  });
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    fetch('../icon.svg').then(response => {
+      if (!response.ok) throw new Error('Missing SVG');
+      return response.blob();
+    }).then(generate).catch(() => {
+      document.getElementById('error').textContent = 'Select icon.svg to generate the icons.';
+    });
+  }
+</script>
+</html>

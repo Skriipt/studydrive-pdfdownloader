@@ -1,134 +1,111 @@
 (function () {
   const DEFAULT_FILENAME = 'studydrive-document.pdf';
-  const MAX_PDF_BYTES = 60 * 1024 * 1024;
-  const PDF_HEADER_SCAN_BYTES = 1024;
-  const INVALID_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001f]+/g;
-  const TRAILING_DOTS_OR_SPACES = /[. ]+$/g;
+  // Base64 adds a third; leave room below Chrome's 64 MiB message limit.
+  const MAX_PDF_BYTES = 40 * 1024 * 1024;
+  const MAX_BASE64_LENGTH = 4 * Math.ceil(MAX_PDF_BYTES / 3);
 
-  function decodeEscapedJsonValue(value) {
-    if (typeof value !== 'string') return '';
-
+  function getDocumentId(value) {
     try {
-      return JSON.parse(`"${value.replace(/"/g, '\\"')}"`);
-    } catch (error) {
-      return value.replace(/\\\//g, '/');
+      const url = new URL(value);
+      if (url.origin !== 'https://www.studydrive.net') return '';
+      return /^\/[^/]+\/doc\/(?:[^/]+\/)?(\d+)\/?$/.exec(url.pathname)?.[1] || '';
+    } catch {
+      return '';
+    }
+  }
+
+  function normalizeSourceUrl(value) {
+    if (typeof value !== 'string' || value.length > 4096) return '';
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+          !(url.hostname === 'studydrive.net' || url.hostname.endsWith('.studydrive.net'))) return '';
+      url.hash = '';
+      return url.href;
+    } catch {
+      return '';
     }
   }
 
   function sanitizeFilename(value) {
-    let filename = typeof value === 'string' ? value.trim() : '';
-
-    filename = filename
-      .replace(INVALID_FILENAME_CHARS, '-')
-      .replace(/\s+/g, ' ')
-      .replace(/-+/g, '-')
-      .replace(/-\./g, '.')
-      .replace(TRAILING_DOTS_OR_SPACES, '')
-      .trim();
-
-    if (!filename) return DEFAULT_FILENAME;
-
-    if (!/\.pdf$/i.test(filename)) {
-      filename = filename.replace(/\.[^.]+$/, '');
-      filename = `${filename || 'studydrive-document'}.pdf`;
+    let stem = (typeof value === 'string' ? value : '').normalize('NFC')
+      .replace(/[<>:"/\\|?*\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]+/g, '-')
+      .replace(/\s+/g, ' ').replace(/-+/g, '-').trim()
+      .replace(/\.(pdf|docx?|pptx?|xlsx?|txt|rtf)$/i, '')
+      .replace(/^\.+|[. ]+$/g, '').trim();
+    if (!stem) return DEFAULT_FILENAME;
+    if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(stem)) stem = '_' + stem;
+    // Bound UTF-8 bytes, preserving whole Unicode characters and the extension.
+    let shortened = '';
+    let length = 0;
+    const encoder = new TextEncoder();
+    for (const character of stem) {
+      length += encoder.encode(character).length;
+      if (length > 176) break;
+      shortened += character;
     }
-
-    return filename;
+    return `${shortened.replace(/[. ]+$/g, '') || 'studydrive-document'}.pdf`;
   }
 
-  function extractFilenameFromScripts(scriptText) {
-    if (typeof scriptText !== 'string') return DEFAULT_FILENAME;
-
-    const match = /"filename"\s*:\s*"([^"]+)"/.exec(scriptText);
-    return sanitizeFilename(match ? decodeEscapedJsonValue(match[1]) : DEFAULT_FILENAME);
+  function getDocumentMetadata(record, pageUrl) {
+    const documentId = getDocumentId(pageUrl);
+    if (!documentId || !record || String(record.id) !== documentId) return null;
+    const sourceUrl = normalizeSourceUrl(record.file_preview);
+    if (!sourceUrl) return null;
+    return { documentId, sourceUrl, filename: sanitizeFilename(record.filename) };
   }
 
-  function hasPreviewMarker(scriptText) {
-    return typeof scriptText === 'string' && /"file_preview"\s*:\s*"[^"]+"/.test(scriptText);
+  function hasPdfParts(head, tail) {
+    return /%PDF-\d\.\d/.test(head) && /%%EOF[\t\n\f\r \0]*$/.test(tail);
   }
 
-  function arrayBufferLooksLikePdf(buffer) {
-    if (!buffer || typeof buffer.byteLength !== 'number' || buffer.byteLength < 5) return false;
-
-    const view = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, PDF_HEADER_SCAN_BYTES));
-    const header = [37, 80, 68, 70, 45]; // %PDF-
-
-    for (let offset = 0; offset <= view.length - header.length; offset += 1) {
-      let matches = true;
-      for (let i = 0; i < header.length; i += 1) {
-        if (view[offset + i] !== header[i]) {
-          matches = false;
-          break;
-        }
-      }
-      if (matches) return true;
-    }
-
-    return false;
-  }
-
-  function shouldInspectResponse(url, contentType) {
-    const normalizedUrl = typeof url === 'string' ? url : '';
-    const normalizedType = typeof contentType === 'string' ? contentType.toLowerCase() : '';
-
-    return (
-      normalizedType.includes('application/pdf') ||
-      normalizedType.includes('application/octet-stream') ||
-      normalizedUrl.includes('file-preview')
+  function isCompletePdf(buffer) {
+    if (!(buffer instanceof ArrayBuffer) || buffer.byteLength < 12) return false;
+    const bytes = new Uint8Array(buffer);
+    return hasPdfParts(
+      String.fromCharCode(...bytes.subarray(0, 1024)),
+      String.fromCharCode(...bytes.subarray(Math.max(0, bytes.length - 1024)))
     );
   }
 
-  function arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
-    const chunks = [];
-    const chunkSize = 0x8000;
-
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      let chunk = '';
-      const slice = bytes.subarray(i, i + chunkSize);
-      for (let j = 0; j < slice.length; j += 1) {
-        chunk += String.fromCharCode(slice[j]);
-      }
-      chunks.push(chunk);
+  function validatePdfBase64(base64, size) {
+    if (!Number.isSafeInteger(size) || size < 12 || size > MAX_PDF_BYTES) return 'Invalid PDF size (limit: 40 MiB).';
+    if (typeof base64 !== 'string' || base64.length > MAX_BASE64_LENGTH ||
+        base64.length !== 4 * Math.ceil(size / 3) || /[^A-Za-z0-9+/=]/.test(base64)) return 'Invalid PDF encoding.';
+    const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+    const firstPadding = base64.indexOf('=');
+    if ((firstPadding !== -1 && firstPadding !== base64.length - padding) ||
+        base64.length / 4 * 3 - padding !== size) return 'Invalid PDF encoding.';
+    try {
+      if (btoa(atob(base64.slice(-4))) !== base64.slice(-4) || !hasPdfParts(
+        atob(base64.slice(0, 1368)).slice(0, 1024), atob(base64.slice(-1368)).slice(-1024)
+      )) return 'The captured data is not a complete PDF.';
+    } catch {
+      return 'Invalid PDF encoding.';
     }
-
-    return btoa(chunks.join(''));
+    return null;
   }
 
-  function parseEventDetail(detail) {
-    if (typeof detail !== 'string') return null;
+  function arrayBufferToBase64(buffer) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.slice(reader.result.indexOf(',') + 1));
+      reader.onerror = () => reject(new Error('Could not encode the PDF. Please try again.'));
+      reader.readAsDataURL(new Blob([buffer], { type: 'application/pdf' }));
+    });
+  }
 
+  function parseEventDetail(detail, maxLength = 8192) {
+    if (typeof detail !== 'string' || detail.length > maxLength) return null;
     try {
       const parsed = JSON.parse(detail);
-      return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (error) {
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch {
       return null;
     }
   }
 
-  function createRequestId() {
-    if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
-      return globalThis.crypto.randomUUID();
-    }
-
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
-
-  const api = {
-    DEFAULT_FILENAME,
-    MAX_PDF_BYTES,
-    arrayBufferLooksLikePdf,
-    arrayBufferToBase64,
-    createRequestId,
-    extractFilenameFromScripts,
-    hasPreviewMarker,
-    parseEventDetail,
-    sanitizeFilename,
-    shouldInspectResponse
-  };
-
-  globalThis.SDUtils = api;
-  if (globalThis.window) {
-    globalThis.window.SDUtils = api;
-  }
+  globalThis.SDUtils = Object.freeze({ MAX_PDF_BYTES, MAX_BASE64_LENGTH, getDocumentId,
+    normalizeSourceUrl, getDocumentMetadata, sanitizeFilename, isCompletePdf,
+    validatePdfBase64, arrayBufferToBase64, parseEventDetail });
 })();
