@@ -30,3 +30,7 @@ Sign in to [studydrive.net](https://www.studydrive.net), open a document, wait u
 ## Development
 
 For technical, security and troubleshooting details, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Related project
+
+[Studydrive Adblock Filters](https://github.com/Skriipt/studydrive-adblock-filters) is a filter list for uBlock Origin and uBO Lite that hides Studydrive ads, Premium prompts and anti-adblock banners. It is a separate project and not required for this extension.
