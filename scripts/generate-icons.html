@@ -10,7 +10,7 @@
   #error { color: #b42318; }
 </style>
 <h1>Generate extension icons</h1>
-<p>Select the repository's <code>icon.svg</code>, then save each PNG in the project root.</p>
+<p>Select <code>extension/icons/icon.svg</code>, then save each PNG in <code>extension/icons/</code>.</p>
 <label>SVG source <input id="source" type="file" accept="image/svg+xml,.svg"></label>
 <p id="error" role="status"></p>
 <div id="output"></div>
@@ -45,7 +45,7 @@
     if (file) void generate(file);
   });
   if (location.protocol === 'http:' || location.protocol === 'https:') {
-    fetch('../icon.svg').then(response => {
+    fetch('../extension/icons/icon.svg').then(response => {
       if (!response.ok) throw new Error('Missing SVG');
       return response.blob();
     }).then(generate).catch(() => {

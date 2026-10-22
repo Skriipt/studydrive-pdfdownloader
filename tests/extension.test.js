@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '..', 'extension');
 const PAGE = 'https://www.studydrive.net/de/doc/example/123';
 const SOURCE = 'https://cdn.studydrive.net/d/prod/documents/123/teaser/123.pdf?token=fixture';
 const PDF = '%PDF-1.7\n1 0 obj\n<<>>\nendobj\nstartxref\n0\n%%EOF\n';

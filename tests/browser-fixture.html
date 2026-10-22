@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>StudyDrive downloader browser fixture</title>
-<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../extension/styles.css">
 <style>
   body { margin: 24px; font: 16px/1.5 system-ui; color: #183b35; background: #f3f8f7; }
   main { max-width: 620px; }
@@ -25,7 +25,7 @@
 <script type="module">
   const names = ['utils.js', 'background.js', 'inject.js', 'content.js'];
   const sources = await Promise.all(names.map(async name => {
-    const response = await fetch('../' + name);
+    const response = await fetch('../extension/' + name);
     if (!response.ok) throw new Error('Missing runtime script: ' + name);
     return response.text();
   }));
