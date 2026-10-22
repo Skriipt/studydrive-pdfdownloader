@@ -1,124 +1,162 @@
-// Runs in ISOLATED world - handles the StudyDrive-facing UI and extension messaging.
+// ISOLATED world: user interaction and the boundary to privileged extension APIs.
 (function () {
   const utils = window.SDUtils;
-  const BUTTON_CLASS = 'sd-pdf-download-btn';
-  const EXPORT_TIMEOUT_MS = 15000;
-  const RESET_DELAY_MS = 2400;
+  let documentId = '';
+  let metadata = null;
+  let ready = false;
+  let size = 0;
+  let busy = false;
+  let operation = 0;
+  let cancelExport = null;
+  let container;
+  let button;
+  let status;
 
-  function getPageScriptText() {
-    return Array.from(document.querySelectorAll('script'))
-      .map(script => script.textContent || '')
-      .join('');
-  }
-
-  function isSupportedDocumentPage(scriptText) {
-    return location.hostname === 'www.studydrive.net' &&
-      location.pathname.includes('/doc/') &&
-      utils.hasPreviewMarker(scriptText);
-  }
-
-  function setButtonState(button, state, label, disabled) {
+  function render(state, message) {
+    if (!container) return;
     button.dataset.state = state;
-    button.disabled = Boolean(disabled);
-    button.textContent = label;
-    button.setAttribute('aria-label', label);
+    button.disabled = busy || !ready;
+    button.textContent = busy ? 'Preparing...' : ready ? 'Download PDF' : 'Waiting for PDF';
+    button.setAttribute('aria-busy', String(busy));
+    status.textContent = message;
   }
 
-  function sendDownloadMessage(payload) {
+  function cancelOperation() {
+    operation++;
+    cancelExport?.();
+    busy = false;
+  }
+
+  function syncPage() {
+    const nextId = utils.getDocumentId(location.href);
+    if (nextId !== documentId) {
+      cancelOperation();
+      documentId = nextId;
+      metadata = null;
+      ready = false;
+      size = 0;
+      container?.remove();
+      container = null;
+    }
+    if (!documentId || !document.body) return false;
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'sd-pdf-download';
+      button = document.createElement('button');
+      button.className = 'sd-pdf-download-btn';
+      button.type = 'button';
+      button.setAttribute('aria-describedby', 'sd-pdf-download-status');
+      status = document.createElement('p');
+      status.className = 'sd-pdf-status';
+      status.id = 'sd-pdf-download-status';
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
+      status.setAttribute('aria-atomic', 'true');
+      container.append(button, status);
+      document.body.appendChild(container);
+      button.addEventListener('click', download);
+      render('waiting', 'Waiting for a complete PDF preview.');
+    }
+    return true;
+  }
+
+  function requestPdfExport(snapshot) {
+    const requestId = crypto.randomUUID();
     return new Promise(resolve => {
-      chrome.runtime.sendMessage(payload, response => {
-        if (chrome.runtime.lastError) {
-          resolve({ error: chrome.runtime.lastError.message });
+      const timeout = window.setTimeout(() => finish({ error: 'Export timed out. Reload the document to try again.' }), 15000);
+      function finish(result) {
+        window.clearTimeout(timeout);
+        window.removeEventListener('sd-export-result', handler);
+        cancelExport = null;
+        resolve(result);
+      }
+      function handler(event) {
+        const detail = utils.parseEventDetail(event.detail, utils.MAX_BASE64_LENGTH + 8192);
+        if (!detail || detail.requestId !== requestId) return;
+        if (typeof detail.error === 'string') { finish({ error: detail.error.slice(0, 512) }); return; }
+        if (detail.documentId !== snapshot.documentId || detail.sourceUrl !== snapshot.sourceUrl ||
+            detail.filename !== snapshot.filename || detail.size !== snapshot.size) {
+          finish({ error: 'The PDF no longer matches this document. Reload the document to try again.' });
           return;
         }
-
-        resolve(response || { error: 'No response from extension background.' });
-      });
-    });
-  }
-
-  function requestPdfExport() {
-    const requestId = utils.createRequestId();
-
-    return new Promise(resolve => {
-      const timeoutId = window.setTimeout(() => {
-        window.removeEventListener('sd-export-result', handler);
-        resolve({ error: 'Export timed out. Reload the page and try again.', requestId });
-      }, EXPORT_TIMEOUT_MS);
-
-      function handler(event) {
-        const detail = utils.parseEventDetail(event.detail);
-        if (!detail || detail.requestId !== requestId) return;
-
-        window.clearTimeout(timeoutId);
-        window.removeEventListener('sd-export-result', handler);
-        resolve(detail);
+        const error = utils.validatePdfBase64(detail.base64, detail.size);
+        finish(error ? { error } : detail);
       }
-
+      cancelExport = () => finish({ error: 'The document changed.' });
       window.addEventListener('sd-export-result', handler);
       window.dispatchEvent(new CustomEvent('sd-export-pdf', {
-        detail: JSON.stringify({ requestId })
+        detail: JSON.stringify({ requestId, documentId: snapshot.documentId, sourceUrl: snapshot.sourceUrl })
       }));
     });
   }
 
-  function createButton(filename) {
-    const button = document.createElement('button');
-    button.className = BUTTON_CLASS;
-    button.type = 'button';
-    button.setAttribute('aria-live', 'polite');
-    button.title = 'Download PDF';
-    setButtonState(button, 'ready', 'Download PDF', false);
+  function sendDownloadMessage(payload) {
+    return new Promise(resolve => {
+      const timeout = window.setTimeout(() => resolve({ error: 'No download confirmation. Check browser downloads before trying again.' }), 30000);
+      try {
+        chrome.runtime.sendMessage(payload, response => {
+          window.clearTimeout(timeout);
+          const failure = chrome.runtime.lastError;
+          resolve(failure ? { error: failure.message } : response || { error: 'No response from the extension.' });
+        });
+      } catch (failure) {
+        window.clearTimeout(timeout);
+        resolve({ error: failure.message || 'Reload the page after updating the extension.' });
+      }
+    });
+  }
 
-    button.addEventListener('click', async () => {
-      setButtonState(button, 'loading', 'Preparing...', true);
-      console.log('[SD] Requesting PDF export');
-
-      const exportResult = await requestPdfExport();
-      console.log('[SD] Export result:', exportResult.error || `${exportResult.size} bytes`);
-
-      if (exportResult.error) {
-        setButtonState(button, 'error', exportResult.error, false);
-        window.setTimeout(() => setButtonState(button, 'ready', 'Download PDF', false), RESET_DELAY_MS + 1200);
+  async function download(event) {
+    if (!event.isTrusted || !syncPage() || !ready || busy || !metadata) return;
+    const attempt = ++operation;
+    const snapshot = { ...metadata, size };
+    busy = true;
+    render('loading', 'Preparing the PDF...');
+    try {
+      const exported = await requestPdfExport(snapshot);
+      if (!syncPage() || attempt !== operation) return;
+      if (exported.error) {
+        render('error', exported.error);
         return;
       }
-
-      const downloadResult = await sendDownloadMessage({
-        action: 'download',
-        base64: exportResult.base64,
-        filename
-      });
-
-      if (downloadResult.success) {
-        setButtonState(button, 'success', 'Downloaded', true);
-      } else {
-        setButtonState(button, 'error', downloadResult.error || 'Download failed', false);
+      const result = await sendDownloadMessage({ action: 'download', ...snapshot, base64: exported.base64 });
+      if (!syncPage() || attempt !== operation) return;
+      render(result.started ? 'success' : 'error', result.started ?
+        'Download started. Check your browser downloads for completion.' : result.error || 'Could not start the download.');
+    } catch {
+      if (attempt === operation) render('error', 'Could not prepare the PDF. Reload the document to try again.');
+    } finally {
+      if (attempt === operation) {
+        busy = false;
+        if (container) {
+          button.disabled = !ready;
+          button.textContent = ready ? 'Download PDF' : 'Waiting for PDF';
+          button.setAttribute('aria-busy', 'false');
+        }
       }
-
-      window.setTimeout(() => setButtonState(button, 'ready', 'Download PDF', false), RESET_DELAY_MS);
-    });
-
-    return button;
-  }
-
-  function init() {
-    if (document.querySelector(`.${BUTTON_CLASS}`)) return;
-
-    const scriptText = getPageScriptText();
-    if (!isSupportedDocumentPage(scriptText)) {
-      console.log('[SD] No StudyDrive PDF preview found on this page.');
-      return;
     }
-
-    const filename = utils.extractFilenameFromScripts(scriptText);
-    console.log('[SD] Filename:', filename);
-
-    document.body.appendChild(createButton(filename));
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
+  window.addEventListener('sd-pdf-status', event => {
+    const detail = utils.parseEventDetail(event.detail);
+    if (!detail || !syncPage() || detail.documentId !== documentId ||
+        !['waiting', 'loading', 'ready', 'error'].includes(detail.state)) return;
+    const next = utils.getDocumentMetadata({ id: detail.documentId, filename: detail.filename, file_preview: detail.sourceUrl }, location.href);
+    if (next?.sourceUrl !== metadata?.sourceUrl || next?.filename !== metadata?.filename) cancelOperation();
+    metadata = next;
+    size = detail.size;
+    ready = Boolean(metadata && detail.state === 'ready' && Number.isSafeInteger(size) && size >= 12 && size <= utils.MAX_PDF_BYTES);
+    if (!busy) render(detail.state, detail.state === 'error' ?
+      (typeof detail.error === 'string' ? detail.error.slice(0, 512) : 'Could not read the PDF preview.') :
+      ready ? 'PDF ready.' : detail.state === 'loading' ? 'Loading the PDF preview...' : 'Waiting for a complete PDF preview.');
+  });
+
+  function refresh() {
+    syncPage();
+    window.dispatchEvent(new CustomEvent('sd-pdf-status-request'));
   }
+  window.addEventListener('popstate', refresh);
+  window.addEventListener('pageshow', refresh);
+  window.addEventListener('pagehide', cancelOperation);
+  refresh();
 })();
