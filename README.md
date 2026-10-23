@@ -1,36 +1,61 @@
-<div align="center">
-<img src="extension/icons/icon128.png" width="64" alt="Studydrive PDF Downloader icon">
+<p align="center">
+  <img src="assets/readme/hero.svg" width="100%" alt="Studydrive PDF Downloader — save the PDF preview already loaded in your browser. Illustration of the Download PDF control.">
+</p>
 
 # Studydrive PDF Downloader
-A lightweight Chromium extension that adds a **Download PDF** button to Studydrive documents.
 
-**[Download the latest release (ZIP)](https://github.com/Skriipt/studydrive-pdfdownloader/releases/latest/download/studydrive-pdfdownloader.zip)**
+Save the PDF preview you are reading on Studydrive. A lightweight Chromium extension adds a **Download PDF** button directly to document pages.
 
-Requires Chrome 111+ or a compatible Chromium desktop browser.
-</div>
+**[Download the latest release · ZIP](https://github.com/Skriipt/studydrive-pdfdownloader/releases/latest/download/studydrive-pdfdownloader.zip)** · [Installation](#installation) · [Troubleshooting](#troubleshooting)
+
+Chrome **111+** or a compatible Chromium desktop browser · Manifest V3 · No dependencies or build step
+
+> **Preview, not necessarily the full document.** The saved PDF contains the preview loaded by Studydrive, which may have fewer pages than the original. Maximum file size: **40 MiB**.
+
+## From preview to PDF
+
+1. **Open a document.** Sign in to [studydrive.net](https://www.studydrive.net) and open the document you want to save.
+2. **Wait for “PDF ready.”** The extension observes the preview as the viewer loads it.
+3. **Click “Download PDF”.** The file is saved through your browser. Check browser downloads for completion.
+
+The extension uses the already-loaded preview. It makes no additional document requests and does not fetch missing pages.
 
 ## Installation
 
-1. Download the ZIP and extract it to a permanent folder.
+1. [Download the release ZIP](https://github.com/Skriipt/studydrive-pdfdownloader/releases/latest/download/studydrive-pdfdownloader.zip) and extract it to a permanent folder.
 2. Open `chrome://extensions` and enable **Developer mode**.
-3. Choose **Load unpacked** and select the extracted folder containing `manifest.json`. From a source checkout, select `extension/`.
+3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
+4. Reload any Studydrive tabs that were already open.
 
-## Usage
+Installing from source? Select the repository’s `extension/` folder instead. No build is needed.
 
-Sign in to [studydrive.net](https://www.studydrive.net), open a document, wait until the PDF is ready, then click **Download PDF**.
+## Privacy & limits
 
-## Limits and privacy
+- **No analytics or external transmission.** The extension processes the preview in your browser and saves it through the browser’s downloads API.
+- **One API permission: `downloads`.** Content scripts run on `https://www.studydrive.net/*`; download controls appear on document pages.
+- **Complete previews only, up to 40 MiB.** Partial or range responses are unsupported; missing parts are not assembled.
+- **No access-control bypass.** Use only documents you are authorized to download.
 
-- Downloads only the already-loaded preview, which may have fewer pages than the original.
-- Maximum file size: 40 MiB.
-- No access-control bypass; use only documents you are authorized to download.
-- No analytics or external transmission.
-- No dependencies or build step.
+## Troubleshooting
+
+**Stuck on “Waiting for PDF”?** Let the preview load. If it is already visible, reload the document so the extension can observe its request.
+
+**A partial-preview or size error?** The viewer must supply a complete PDF within the 40 MiB limit. The extension cannot reconstruct a partial response.
+
+**No download confirmation?** Check browser downloads before trying again; the download may already have started.
+
+For other errors, site-access checks and capture limitations, see [development & troubleshooting](docs/DEVELOPMENT.md).
 
 ## Development
 
-For technical, security and troubleshooting details, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Load `extension/` as an unpacked extension. To run the repository checks with Node.js 22+ and Python 3.10+:
 
-## Related project
+```bash
+node scripts/check.js
+```
 
-[Studydrive Adblock Filters](https://github.com/Skriipt/studydrive-adblock-filters) is a filter list for uBlock Origin and uBO Lite that hides Studydrive ads, Premium prompts and anti-adblock banners. It is a separate project and not required for this extension.
+See the [development guide](docs/DEVELOPMENT.md) for the browser fixture, security boundary and release packaging.
+
+## Also for Studydrive
+
+[Studydrive Adblock Filters](https://github.com/Skriipt/studydrive-adblock-filters) hides Studydrive ads, Premium prompts and anti-adblock banners with uBlock Origin or uBO Lite. It is a separate, optional project.
