@@ -88,7 +88,7 @@
     "message": "Preview capture progress"
   },
   "technicalDetails": {
-    "message": "Technical details"
+    "message": "Details"
   },
   "errorRequestFailed": {
     "message": "The preview did not finish loading. Reload the page to try again."
@@ -194,5 +194,8 @@
   },
   "onboardingShortcutUnset": {
     "message": "no shortcut set (chrome://extensions/shortcuts)"
+  },
+  "errorTitle": {
+    "message": "Download unavailable"
   }
 }

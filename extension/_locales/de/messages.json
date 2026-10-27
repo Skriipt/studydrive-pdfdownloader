@@ -88,7 +88,7 @@
     "message": "Fortschritt der Vorschau-Erfassung"
   },
   "technicalDetails": {
-    "message": "Technische Details"
+    "message": "Details"
   },
   "errorRequestFailed": {
     "message": "Die Vorschau wurde nicht vollständig geladen. Lade die Seite neu, um es erneut zu versuchen."
@@ -194,5 +194,8 @@
   },
   "onboardingShortcutUnset": {
     "message": "kein Tastenkürzel festgelegt (chrome://extensions/shortcuts)"
+  },
+  "errorTitle": {
+    "message": "Download nicht verfügbar"
   }
 }
