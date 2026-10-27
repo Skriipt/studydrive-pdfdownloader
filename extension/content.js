@@ -75,6 +75,8 @@
     const card = element('div', 'card');
     card.setAttribute('role', 'region');
     card.setAttribute('aria-label', t('extName'));
+    const title = element('p', 'error-title');
+    title.textContent = t('errorTitle');
     const row = element('div', 'row');
     const primary = element('button', 'primary');
     primary.type = 'button';
@@ -102,14 +104,14 @@
     summary.textContent = t('technicalDetails');
     const code = element('code');
     details.append(summary, code);
-    card.append(row, status, bar, meta, secondary, details);
+    card.append(title, row, status, bar, meta, secondary, details);
     root.append(card);
     // Disabled-looking controls stay focusable; activation is guarded instead.
     primary.addEventListener('click', trusted(activatePrimary));
     secondary.addEventListener('click', trusted(reloadPage));
     hide.addEventListener('click', trusted(() => { dismissed = true; render(); }));
     document.body.appendChild(host);
-    return { host, card, primary, status, bar, meta, secondary, details, code };
+    return { host, card, title, primary, status, bar, meta, secondary, details, code };
   }
 
   function describe() {
@@ -166,6 +168,8 @@
     const view = describe();
     ui.host.hidden = dismissed;
     ui.card.dataset.state = view.tone;
+    ui.title.hidden = view.tone !== 'error';
+    ui.card.dataset.expanded = String(Boolean(view.reloadHint || view.progress));
     ui.primary.dataset.action = view.action || '';
     ui.primary.setAttribute('aria-disabled', String(!view.action));
     ui.primary.setAttribute('aria-busy', String(view.tone === 'busy'));

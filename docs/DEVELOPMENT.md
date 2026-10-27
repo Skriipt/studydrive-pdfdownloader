@@ -74,6 +74,14 @@ Before release, also load the actual unpacked extension and verify:
 
 Automated fixtures do not replace this authenticated extension/browser check.
 
+The compact mockup layout also has an optional headless Chromium check (Node.js 22+):
+
+```bash
+CHROME_BIN=/path/to/chromium node tests/browser-layout.mjs
+```
+
+It checks actual computed geometry for inline file size, compact pill states and narrow viewports, without a web server or StudyDrive requests. Set `LAYOUT_SCREENSHOT_DIR` to an existing directory to save screenshots.
+
 ### Icons
 
 `extension/icons/icon.svg` is the editable source. Open `scripts/generate-icons.html` from the repository root in a browser and select that SVG, or open it through the local server to load the SVG automatically. Save the four generated PNGs in `extension/icons/` as `icon16.png`, `icon32.png`, `icon48.png` and `icon128.png`. The generator uses the browser's SVG renderer and canvas, with no tooling dependencies. The check script verifies their dimensions.
