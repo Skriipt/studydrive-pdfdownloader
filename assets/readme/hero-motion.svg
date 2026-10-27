@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+  <title id="title">Studydrive PDF Downloader</title>
+  <desc id="desc">A small extension to make life easier. An illustrated preview fills with document content, then the Download PDF control and PDF ready status appear. This is a conceptual illustration, not a screenshot.</desc>
+  <rect width="1200" height="480" rx="24" fill="#edf7f4"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <g id="project-title">
+      <text x="52" y="171" fill="#163e35" font-size="84" font-weight="700" letter-spacing="-2.8">Studydrive</text>
+      <text x="52" y="263" fill="#008374" font-size="78" font-weight="700" letter-spacing="-3">PDF Downloader</text>
+      <path d="M58 426H94" stroke="#008374" stroke-width="3" stroke-linecap="round"/>
+      <text x="109" y="434" fill="#397167" font-size="22">A small extension to make life easier.</text>
+    </g>
+
+    <!-- A preview sheet, not a reproduction of the Studydrive interface. -->
+    <g id="preview-paper">
+      <rect x="847" y="66" width="254" height="278" rx="16" fill="#dbede6" transform="rotate(7 974 205)"/>
+      <rect x="822" y="49" width="254" height="278" rx="16" fill="#fff" stroke="#c9e2da" stroke-width="2"/>
+      <path d="M844 95H1054" stroke="#dbede6" stroke-width="2"/>
+      <text x="845" y="80" fill="#397167" font-size="18" font-weight="600" letter-spacing="1.5">PREVIEW</text>
+      <rect x="1003" y="63" width="50" height="22" rx="5" fill="#edf7f4"/>
+      <text x="1028" y="80" fill="#008374" font-size="15" font-weight="700" text-anchor="middle">PDF</text>
+    </g>
+
+    <g id="preview-content" fill="none" stroke-linecap="round">
+      <path d="M847 125H1004" stroke="#008374" stroke-width="8"/>
+      <path d="M847 149H1050M847 170H1050M847 191H986" stroke="#c9e2da" stroke-width="7"/>
+      <rect x="844" y="220" width="66" height="64" rx="8" fill="#edf7f4"/>
+      <path d="M927 231H1048M927 252H1048M927 273H1006" stroke="#c9e2da" stroke-width="7"/>
+      <path d="M859 266L872 251L881 258L895 239" stroke="#008374" stroke-width="4" stroke-linejoin="round"/>
+    </g>
+
+    <!-- The arrow belongs to the export action, not to a fabricated success state. -->
+    <g id="export-arrow" fill="none" stroke="#008374" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1123 194V274M1106 257L1123 274L1140 257"/>
+    </g>
+
+    <g id="download-control">
+      <rect x="784" y="328" width="354" height="76" rx="12" fill="#008374"/>
+      <path d="M819 350V373M811 366L819 374L827 366M809 382H829" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="851" y="377" fill="#fff" font-size="32" font-weight="700">Download PDF</text>
+    </g>
+
+    <g id="ready-status">
+      <circle cx="909" cy="437" r="10" fill="#dbede6"/>
+      <path d="M905 437L908 440L914 433" fill="none" stroke="#008374" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="930" y="445" fill="#397167" font-size="24">PDF ready.</text>
+    </g>
+  </g>
+</svg>
