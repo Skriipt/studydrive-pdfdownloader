@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 class ReleasePackageTest(unittest.TestCase):
     def test_zip_is_installable_contains_only_runtime_files_and_is_reproducible(self):
         expected = {
-            'manifest.json', 'background.js', 'content.js', 'inject.js', 'utils.js', 'styles.css',
+            'manifest.json', 'background.js', 'content.js', 'inject.js', 'utils.js', 'ui-styles.js',
+            'onboarding.html', 'onboarding.js', '_locales/en/messages.json', '_locales/de/messages.json',
             'icons/icon16.png', 'icons/icon32.png', 'icons/icon48.png', 'icons/icon128.png',
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -26,7 +27,8 @@ class ReleasePackageTest(unittest.TestCase):
                 self.assertEqual(set(archive.namelist()), expected)
                 manifest = json.loads(archive.read('manifest.json'))
                 self.assertEqual(manifest['manifest_version'], 3)
-                resources = [manifest['background']['service_worker'], *manifest['icons'].values()]
+                resources = [manifest['background']['service_worker'], *manifest['icons'].values(),
+                             manifest['options_ui']['page'], '_locales/en/messages.json', '_locales/de/messages.json']
                 for script in manifest['content_scripts']:
                     resources.extend(script['js'])
                     resources.extend(script.get('css', []))

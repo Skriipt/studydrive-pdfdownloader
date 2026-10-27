@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title data-i18n="extName">StudyDrive PDF Downloader</title>
+<style>
+  :root { color-scheme: light dark; --text: #183b35; --muted: #4b635f; --surface: #ffffff; --page: #f3f8f7; --border: #d4e5e2; --accent: #008374; }
+  @media (prefers-color-scheme: dark) {
+    :root { --text: #e3f0ed; --muted: #a7bbb7; --surface: #17211f; --page: #0f1716; --border: #2e3f3c; --accent: #4fd1c0; }
+  }
+  body { margin: 0; padding: 40px 20px; background: var(--page); color: var(--text); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  header { display: flex; align-items: center; gap: 14px; }
+  h1 { margin: 0; font-size: 22px; line-height: 1.25; }
+  h2 { margin: 24px 0 4px; font-size: 16px; }
+  p, ol { margin: 8px 0; }
+  ol { padding-left: 22px; }
+  li + li { margin-top: 6px; }
+  kbd { padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .muted { color: var(--muted); font-size: 14px; }
+  #version { margin-top: 24px; }
+</style>
+<main>
+  <header>
+    <img src="icons/icon48.png" width="48" height="48" alt="">
+    <h1 data-i18n="onboardingTitle">StudyDrive PDF Downloader is ready</h1>
+  </header>
+  <p data-i18n="onboardingIntro"></p>
+  <ol>
+    <li data-i18n="onboardingStepOpen"></li>
+    <li id="shortcut-step"></li>
+    <li data-i18n="onboardingStepHide"></li>
+  </ol>
+  <h2 data-i18n="onboardingReloadTitle"></h2>
+  <p data-i18n="onboardingReload"></p>
+  <h2 data-i18n="onboardingLimitTitle"></h2>
+  <p data-i18n="onboardingLimit"></p>
+  <p class="muted" data-i18n="onboardingPrivacy"></p>
+  <p class="muted" id="version"></p>
+</main>
+<script src="onboarding.js"></script>
+</html>

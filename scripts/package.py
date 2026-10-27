@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
@@ -10,12 +11,23 @@ ROOT = Path(__file__).resolve().parents[1]
 EXTENSION = ROOT / 'extension'
 
 
-def package(output):
-    manifest = json.loads((EXTENSION / 'manifest.json').read_text())
-    files = {'manifest.json', manifest['background']['service_worker'], *manifest['icons'].values()}
+def runtime_files(manifest):
+    files = {'manifest.json', manifest['background']['service_worker'], *manifest['icons'].values(),
+             *manifest['action']['default_icon'].values()}
     for script in manifest['content_scripts']:
         files.update(script['js'])
         files.update(script.get('css', []))
+    page = manifest['options_ui']['page']
+    files.add(page)
+    # Local scripts and images referenced by the help page.
+    files.update(re.findall(r'(?:src|href)="([^":]+)"', (EXTENSION / page).read_text()))
+    files.update(path.relative_to(EXTENSION).as_posix() for path in (EXTENSION / '_locales').glob('*/messages.json'))
+    return files
+
+
+def package(output):
+    manifest = json.loads((EXTENSION / 'manifest.json').read_text())
+    files = runtime_files(manifest)
     for name in files:
         source = (EXTENSION / name).resolve()
         if not source.is_relative_to(EXTENSION.resolve()) or not source.is_file():

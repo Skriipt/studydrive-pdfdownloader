@@ -10,16 +10,24 @@
   let exporting = false;
   let state = 'waiting';
   let error = '';
+  let errorCode = '';
+
+  // Codes let the isolated UI show localized, friendly text; `error` stays as technical detail.
+  function captureError(code, message) {
+    return Object.assign(new Error(message), { code });
+  }
 
   function emitStatus() {
     window.dispatchEvent(new CustomEvent('sd-pdf-status', {
-      detail: JSON.stringify({ ...metadata, documentId, state, error, size: buffer?.byteLength || 0 })
+      detail: JSON.stringify({ ...metadata, documentId, state, error, errorCode, size: buffer?.byteLength || 0,
+        received: activeRead?.received || 0, total: activeRead?.total || 0 })
     }));
   }
 
-  function setStatus(nextState, message = '') {
+  function setStatus(nextState, message = '', code = '') {
     state = nextState;
     error = message;
+    errorCode = message ? code || 'readFailed' : '';
     emitStatus();
   }
 
@@ -56,25 +64,28 @@
   function requestFailed(request) {
     if (request && matchesRequest(request) && !activeRead) {
       console.warn('[SD] The PDF preview request did not complete.');
-      setStatus('error', 'The PDF preview request did not complete. Reload the document to try again.');
+      setStatus('error', 'The PDF preview request did not complete. Reload the document to try again.', 'requestFailed');
     }
   }
 
   function beginCapture(request, status, headers) {
     if (!matchesRequest(request) || activeRead) return null;
     if (status === 206 || headers('content-range')) {
-      setStatus('error', 'Only part of the PDF was loaded. A complete preview response is required.');
+      setStatus('error', 'Only part of the PDF was loaded. A complete preview response is required.', 'partial');
       return null;
     }
     if (status !== 200) {
-      setStatus('error', `The preview request failed (HTTP ${status}). Reload the document to try again.`);
+      setStatus('error', `The preview request failed (HTTP ${status}). Reload the document to try again.`, 'http');
       return null;
     }
-    if (Number(headers('content-length')) > utils.MAX_PDF_BYTES) {
-      setStatus('error', 'The PDF exceeds the 40 MiB download limit.');
+    const total = Number(headers('content-length'));
+    if (total > utils.MAX_PDF_BYTES) {
+      setStatus('error', 'The PDF exceeds the 40 MiB download limit.', 'tooLarge');
       return null;
     }
-    activeRead = { version, cancelled: false, reader: null };
+    // Content-Length is only a progress hint; it may describe compressed bytes.
+    activeRead = { version, cancelled: false, reader: null, received: 0, reported: 0,
+      total: Number.isSafeInteger(total) && total > 0 ? total : 0 };
     setStatus('loading');
     return activeRead;
   }
@@ -86,8 +97,8 @@
 
   function rememberPdf(bytes, ticket) {
     if (!isCurrent(ticket)) return;
-    if (bytes.byteLength > utils.MAX_PDF_BYTES) throw new Error('The PDF exceeds the 40 MiB download limit.');
-    if (!utils.isCompletePdf(bytes)) throw new Error('The preview did not contain a complete PDF. Reload the document to try again.');
+    if (bytes.byteLength > utils.MAX_PDF_BYTES) throw captureError('tooLarge', 'The PDF exceeds the 40 MiB download limit.');
+    if (!utils.isCompletePdf(bytes)) throw captureError('incomplete', 'The preview did not contain a complete PDF. Reload the document to try again.');
     buffer = bytes;
     setStatus('ready');
   }
@@ -95,13 +106,21 @@
   function captureFailed(ticket, failure) {
     if (isCurrent(ticket)) {
       console.warn('[SD] PDF capture failed:', failure.message);
-      setStatus('error', failure.message || 'Could not read the PDF preview. Reload the document to try again.');
+      setStatus('error', failure.message || 'Could not read the PDF preview. Reload the document to try again.', failure.code);
     }
+  }
+
+  function reportProgress(ticket, received) {
+    ticket.received = received;
+    // Bound event traffic: at most about 100 progress updates per capture.
+    if (received - ticket.reported < Math.max(64 * 1024, ticket.total / 100)) return;
+    ticket.reported = received;
+    emitStatus();
   }
 
   async function readResponse(response, ticket) {
     try {
-      if (!response.body) throw new Error('The preview response has no readable body.');
+      if (!response.body) throw captureError('unsupported', 'The preview response has no readable body.');
       const reader = response.body.getReader();
       ticket.reader = reader;
       const chunks = [];
@@ -115,9 +134,10 @@
           if (size > utils.MAX_PDF_BYTES) {
             // Do not await cancellation of a clone: the page may still be reading its branch.
             reader.cancel().catch(() => console.warn('[SD] Could not stop an oversized PDF capture.'));
-            throw new Error('The PDF exceeds the 40 MiB download limit.');
+            throw captureError('tooLarge', 'The PDF exceeds the 40 MiB download limit.');
           }
           chunks.push(value);
+          reportProgress(ticket, size);
         }
         if (!isCurrent(ticket)) return;
         const bytes = new Uint8Array(size);
@@ -182,9 +202,9 @@
         void (async () => {
           try {
             const data = this.response;
-            if (data instanceof Blob && data.size > utils.MAX_PDF_BYTES) throw new Error('The PDF exceeds the 40 MiB download limit.');
+            if (data instanceof Blob && data.size > utils.MAX_PDF_BYTES) throw captureError('tooLarge', 'The PDF exceeds the 40 MiB download limit.');
             const bytes = data instanceof Blob ? await data.arrayBuffer() : data;
-            if (!(bytes instanceof ArrayBuffer)) throw new Error('The preview used an unsupported response format.');
+            if (!(bytes instanceof ArrayBuffer)) throw captureError('unsupported', 'The preview used an unsupported response format.');
             rememberPdf(bytes, ticket);
           } catch (failure) {
             captureFailed(ticket, failure);
@@ -205,18 +225,18 @@
     let result;
     let ownsExport = false;
     try {
-      if (!metadata || detail.documentId !== documentId || detail.sourceUrl !== metadata.sourceUrl) throw new Error('The document changed. Please try again.');
-      if (!buffer) throw new Error(error || 'Wait for a complete PDF preview to load.');
-      if (exporting) throw new Error('A PDF export is already in progress.');
+      if (!metadata || detail.documentId !== documentId || detail.sourceUrl !== metadata.sourceUrl) throw captureError('changed', 'The document changed. Please try again.');
+      if (!buffer) throw captureError(errorCode || 'notReady', error || 'Wait for a complete PDF preview to load.');
+      if (exporting) throw captureError('busy', 'A PDF export is already in progress.');
       exporting = true;
       ownsExport = true;
       const size = buffer.byteLength;
       const base64 = await utils.arrayBufferToBase64(buffer);
       syncDocument();
-      if (snapshot.version !== version) throw new Error('The document changed during export.');
+      if (snapshot.version !== version) throw captureError('changed', 'The document changed during export.');
       result = { documentId, sourceUrl: metadata.sourceUrl, filename: metadata.filename, base64, size };
     } catch (failure) {
-      result = { error: failure.message || 'Could not prepare the PDF. Please try again.' };
+      result = { error: failure.message || 'Could not prepare the PDF. Please try again.', errorCode: failure.code || 'readFailed' };
     } finally {
       if (ownsExport) exporting = false;
     }

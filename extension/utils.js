@@ -95,6 +95,16 @@
     });
   }
 
+  // Decimal units, matching their labels; the 40 MiB limit is stated separately.
+  function formatBytes(bytes, locale) {
+    const [unit, divisor] = bytes >= 1e6 ? ['megabyte', 1e6] : bytes >= 1e3 ? ['kilobyte', 1e3] : ['byte', 1];
+    try {
+      return new Intl.NumberFormat(locale, { style: 'unit', unit, maximumFractionDigits: 1 }).format(bytes / divisor);
+    } catch {
+      return `${Math.round(bytes / divisor * 10) / 10} ${{ megabyte: 'MB', kilobyte: 'kB', byte: 'B' }[unit]}`;
+    }
+  }
+
   function parseEventDetail(detail, maxLength = 8192) {
     if (typeof detail !== 'string' || detail.length > maxLength) return null;
     try {
@@ -107,5 +117,5 @@
 
   globalThis.SDUtils = Object.freeze({ MAX_PDF_BYTES, MAX_BASE64_LENGTH, getDocumentId,
     normalizeSourceUrl, getDocumentMetadata, sanitizeFilename, isCompletePdf,
-    validatePdfBase64, arrayBufferToBase64, parseEventDetail });
+    validatePdfBase64, arrayBufferToBase64, formatBytes, parseEventDetail });
 })();

@@ -15,7 +15,8 @@ function checkSyntax(dir) {
 }
 
 const manifest = JSON.parse(readFileSync(join(extension, 'manifest.json'), 'utf8'));
-const files = [manifest.background.service_worker, ...Object.values(manifest.icons),
+const files = [manifest.background.service_worker, ...Object.values(manifest.icons), manifest.options_ui.page,
+  ...Object.values(manifest.action.default_icon), `_locales/${manifest.default_locale}/messages.json`,
   ...manifest.content_scripts.flatMap(script => [...script.js, ...(script.css || [])])];
 for (const file of files) assert.ok(existsSync(join(extension, file)), `Missing manifest resource: ${file}`);
 for (const [size, filename] of Object.entries(manifest.icons)) {
