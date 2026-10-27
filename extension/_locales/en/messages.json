@@ -1,0 +1,198 @@
+{
+  "extName": {
+    "message": "StudyDrive PDF Downloader"
+  },
+  "extDescription": {
+    "message": "Save the PDF preview already loaded on a StudyDrive document page."
+  },
+  "commandDownload": {
+    "message": "Download the loaded PDF preview"
+  },
+  "actionTitle": {
+    "message": "StudyDrive PDF Downloader: show the download controls"
+  },
+  "actionTitleReady": {
+    "message": "StudyDrive PDF Downloader: loaded PDF preview ready"
+  },
+  "actionTitleError": {
+    "message": "StudyDrive PDF Downloader: the PDF needs attention"
+  },
+  "hideLabel": {
+    "message": "Hide download controls"
+  },
+  "hideTitle": {
+    "message": "Hide (show again with the toolbar icon)"
+  },
+  "primaryWaiting": {
+    "message": "Waiting for preview…"
+  },
+  "primaryLoading": {
+    "message": "Capturing preview…"
+  },
+  "primaryDownload": {
+    "message": "Download PDF"
+  },
+  "primaryPreparing": {
+    "message": "Preparing PDF…"
+  },
+  "primarySuccess": {
+    "message": "Download started"
+  },
+  "primaryRetry": {
+    "message": "Try again"
+  },
+  "primaryReload": {
+    "message": "Reload page"
+  },
+  "primaryUnavailable": {
+    "message": "Download unavailable"
+  },
+  "statusWaiting": {
+    "message": "Waiting for the document preview to load."
+  },
+  "statusWaitingLong": {
+    "message": "No preview detected yet. If the document is already visible, reload the page so the extension can see it load."
+  },
+  "statusLoading": {
+    "message": "Capturing the preview as it loads…"
+  },
+  "statusPreparing": {
+    "message": "Preparing the PDF…"
+  },
+  "statusSuccess": {
+    "message": "Check your browser downloads to see when it finishes."
+  },
+  "progressKnown": {
+    "message": "$PERCENT$ · $RECEIVED$ of $TOTAL$",
+    "placeholders": {
+      "percent": {
+        "content": "$1"
+      },
+      "received": {
+        "content": "$2"
+      },
+      "total": {
+        "content": "$3"
+      }
+    }
+  },
+  "progressUnknown": {
+    "message": "$RECEIVED$ received",
+    "placeholders": {
+      "received": {
+        "content": "$1"
+      }
+    }
+  },
+  "progressLabel": {
+    "message": "Preview capture progress"
+  },
+  "technicalDetails": {
+    "message": "Technical details"
+  },
+  "errorRequestFailed": {
+    "message": "The preview did not finish loading. Reload the page to try again."
+  },
+  "errorHttp": {
+    "message": "StudyDrive did not deliver the preview. Reload the page to try again."
+  },
+  "errorPartial": {
+    "message": "The viewer loaded only part of this PDF. Partial previews cannot be saved."
+  },
+  "errorTooLarge": {
+    "message": "This PDF is larger than the 40 MiB limit."
+  },
+  "errorIncomplete": {
+    "message": "The loaded preview was not a complete PDF. Reload the page to try again."
+  },
+  "errorUnsupported": {
+    "message": "This preview format is not supported."
+  },
+  "errorReadFailed": {
+    "message": "The preview could not be read. Reload the page to try again."
+  },
+  "errorChanged": {
+    "message": "The document changed. Try again."
+  },
+  "errorBusy": {
+    "message": "A download is already being prepared."
+  },
+  "errorNotReady": {
+    "message": "The preview is not ready yet."
+  },
+  "errorTimeout": {
+    "message": "Preparing the PDF timed out. Try again."
+  },
+  "errorInvalidData": {
+    "message": "The prepared data was not a valid PDF. Reload the page to try again."
+  },
+  "errorNoConfirmation": {
+    "message": "No download confirmation. Check your browser downloads before trying again."
+  },
+  "errorExtensionUnavailable": {
+    "message": "The extension was updated or reloaded. Reload the page to continue."
+  },
+  "errorRejected": {
+    "message": "The download request was rejected for safety reasons. Reload the page to try again."
+  },
+  "errorDownloadFailed": {
+    "message": "The browser could not start the download."
+  },
+  "onboardingTitle": {
+    "message": "StudyDrive PDF Downloader is ready"
+  },
+  "onboardingIntro": {
+    "message": "Save the PDF preview that StudyDrive has already loaded in your browser."
+  },
+  "onboardingStepOpen": {
+    "message": "Open a document on studydrive.net and let its preview load."
+  },
+  "onboardingStepDownload": {
+    "message": "Click “Download PDF” in the corner, or press $SHORTCUT$.",
+    "placeholders": {
+      "shortcut": {
+        "content": "$1"
+      }
+    }
+  },
+  "onboardingStepHide": {
+    "message": "Hidden the controls? Click the toolbar icon to show them again."
+  },
+  "onboardingReloadTitle": {
+    "message": "Already have StudyDrive open?"
+  },
+  "onboardingReload": {
+    "message": "Reload those tabs once. The extension can only see previews that load after it is installed."
+  },
+  "onboardingLimitTitle": {
+    "message": "Preview, not necessarily the full document"
+  },
+  "onboardingLimit": {
+    "message": "The saved file is the preview your browser loaded. It may have fewer pages than the original. Maximum size: 40 MiB."
+  },
+  "onboardingPrivacy": {
+    "message": "Everything stays in your browser: no extra document requests, no analytics, no external servers. Only use documents you are allowed to download."
+  },
+  "onboardingVersion": {
+    "message": "Version $VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "actionTitleWithVersion": {
+    "message": "$TITLE$ (v$VERSION$)",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "version": {
+        "content": "$2"
+      }
+    }
+  },
+  "onboardingShortcutUnset": {
+    "message": "no shortcut set (chrome://extensions/shortcuts)"
+  }
+}

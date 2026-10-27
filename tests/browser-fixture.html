@@ -3,7 +3,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>StudyDrive downloader browser fixture</title>
-<link rel="stylesheet" href="../extension/styles.css">
 <style>
   body { margin: 24px; font: 16px/1.5 system-ui; color: #183b35; background: #f3f8f7; }
   main { max-width: 620px; }
@@ -18,22 +17,28 @@
     <button data-mode="complete" disabled>Open complete PDF</button>
     <button data-mode="partial" disabled>Open partial PDF</button>
     <button data-mode="incomplete" disabled>Open truncated PDF</button>
+    <button data-mode="slow" disabled>Open slow PDF</button>
+    <button data-mode="never" disabled>Open without preview</button>
     <button id="home" disabled>Go to homepage</button>
+    <button id="shortcut" disabled>Simulate Alt+Shift+D</button>
+    <button id="toolbar" disabled>Simulate toolbar click</button>
   </div>
   <p id="results" role="status">Loading runtime scripts...</p>
 </main>
 <script type="module">
-  const names = ['utils.js', 'background.js', 'inject.js', 'content.js'];
+  const names = ['utils.js', 'background.js', 'inject.js', 'ui-styles.js', 'content.js'];
   const sources = await Promise.all(names.map(async name => {
     const response = await fetch('../extension/' + name);
     if (!response.ok) throw new Error('Missing runtime script: ' + name);
     return response.text();
   }));
+  const lang = new URLSearchParams(location.search).get('lang') === 'de' ? 'de' : 'en';
+  const messages = await (await fetch(`../extension/_locales/${lang}/messages.json`)).json();
   const pdf = '%PDF-1.7\n1 0 obj\n<<>>\nendobj\nstartxref\n0\n%%EOF\n';
   const calls = [];
+  const results = document.getElementById('results');
   let id = 122;
   let mode = 'complete';
-  let handler;
   class XHR extends EventTarget { open() {} send() {} }
   const env = {
     location: new URL('https://www.studydrive.net/de'),
@@ -46,26 +51,67 @@
     history: Object.fromEntries(['pushState', 'replaceState'].map(name => [name, (_state, _title, url) => {
       env.location.href = new URL(url, env.location).href;
     }])),
-    fetch: async () => new Response(mode === 'incomplete' ? '%PDF-1.7\npartial' : pdf, {
-      status: mode === 'partial' ? 206 : 200,
-      headers: { 'content-type': 'application/pdf', ...(mode === 'partial' ? { 'content-range': 'bytes 0-50/100' } : {}) }
-    })
+    fetch: async () => {
+      if (mode === 'slow') {
+        // Stream a valid PDF in chunks with a declared length so capture progress is visible.
+        const bytes = new TextEncoder().encode(pdf.replace('endobj', 'endobj\n' + ' '.repeat(3_000_000)));
+        let offset = 0;
+        return new Response(new ReadableStream({ async pull(controller) {
+          await new Promise(resolve => setTimeout(resolve, 150));
+          controller.enqueue(bytes.subarray(offset, offset += 200_000));
+          if (offset >= bytes.length) controller.close();
+        } }), { headers: { 'content-type': 'application/pdf', 'content-length': String(bytes.length) } });
+      }
+      return new Response(mode === 'incomplete' ? '%PDF-1.7\npartial' : pdf, {
+        status: mode === 'partial' ? 206 : 200,
+        headers: { 'content-type': 'application/pdf', ...(mode === 'partial' ? { 'content-range': 'bytes 0-50/100' } : {}) }
+      });
+    }
   };
-  const chrome = {
-    runtime: {
-      id: 'fixture-extension', onMessage: { addListener: fn => { handler = fn; } },
-      sendMessage: (message, callback) => handler(message, {
-        id: 'fixture-extension', frameId: 0, tab: { id: 42 }, url: env.location.href
-      }, callback)
+  env.location.reload = () => { results.textContent = 'Simulated page reload requested.'; };
+  const i18n = {
+    getUILanguage: () => lang,
+    getMessage: (key, substitutions = []) => (messages[key]?.message || '').replace(/\$([A-Za-z0-9_]+)\$/g, (_, name) =>
+      (messages[key].placeholders?.[name.toLowerCase()]?.content || '').replace(/\$(\d)/g, (_m, n) => [].concat(substitutions)[n - 1] ?? ''))
+  };
+  const listeners = { background: [], content: [] };
+  const hooks = { command: [], action: [] };
+  const extensionId = 'fixture-extension';
+  const runtime = (side, extra) => ({ id: extensionId, lastError: undefined, getManifest: () => ({ version: 'fixture' }),
+    onMessage: { addListener: fn => listeners[side].push(fn) }, ...extra });
+  // Separate API objects keep the background and content message routes distinct, as in Chrome.
+  const backgroundChrome = {
+    i18n,
+    runtime: runtime('background', { openOptionsPage: () => { results.textContent = 'Simulated: opened local help page.'; },
+      onInstalled: { addListener() {} } }),
+    commands: { onCommand: { addListener: fn => hooks.command.push(fn) } },
+    action: {
+      onClicked: { addListener: fn => hooks.action.push(fn) },
+      setBadgeText: async ({ text }) => { document.title = `[${text || '–'}] Downloader browser fixture`; },
+      setBadgeBackgroundColor: async () => {}, setTitle: async () => {}
     },
+    tabs: { sendMessage: (_tabId, message, _options, callback) => {
+      let response;
+      listeners.content.forEach(fn => fn(message, { id: extensionId, url: `chrome-extension://${extensionId}/background.js` }, value => { response = value; }));
+      callback(response);
+    } },
     downloads: { download: (options, callback) => {
       calls.push({ filename: options.filename, base64: options.url.split(',')[1] });
-      document.getElementById('results').textContent = `Simulated downloads: ${calls.length}. Last filename: ${options.filename}`;
+      results.textContent = `Simulated downloads: ${calls.length}. Last filename: ${options.filename}`;
       callback(calls.length);
     } }
   };
-  sources.forEach(source => new Function('window', 'globalThis', 'location', 'history', 'document', 'chrome', 'importScripts', source)(
-    env, env, env.location, env.history, document, chrome, () => {}
+  const contentChrome = {
+    i18n,
+    runtime: runtime('content', { sendMessage: (message, callback) => {
+      let response;
+      const sender = { id: extensionId, frameId: 0, tab: { id: 42 }, url: env.location.href };
+      const async = listeners.background.some(fn => fn(message, sender, value => { response = value; callback?.(value); }));
+      if (!async && response === undefined) callback?.();
+    } })
+  };
+  names.forEach((name, index) => new Function('window', 'globalThis', 'location', 'history', 'document', 'chrome', 'importScripts', sources[index])(
+    env, env, env.location, env.history, document, name === 'background.js' ? backgroundChrome : contentChrome, () => {}
   ));
   async function load(modeToLoad) {
     mode = modeToLoad;
@@ -73,13 +119,16 @@
     env.sdWindow.document = { id, filename: `Lecture "${id}".pdf`,
       file_preview: `https://cdn.studydrive.net/d/prod/documents/${id}/teaser/${id}.pdf?token=fixture` };
     env.history.pushState(null, '', `https://www.studydrive.net/de/doc/example/${id}`);
+    if (mode === 'never') return;
     const response = await env.fetch(env.sdWindow.document.file_preview);
     await response.arrayBuffer();
   }
   window.fixture = { env, calls, load, expectedPdf: pdf };
   for (const button of document.querySelectorAll('[data-mode]')) button.addEventListener('click', () => load(button.dataset.mode));
   document.getElementById('home').addEventListener('click', () => env.history.pushState(null, '', '/de'));
+  document.getElementById('shortcut').addEventListener('click', () => hooks.command.forEach(fn => fn('download-pdf', { id: 42 })));
+  document.getElementById('toolbar').addEventListener('click', () => hooks.action.forEach(fn => fn({ id: 42 })));
   for (const button of document.querySelectorAll('.controls button')) button.disabled = false;
-  document.getElementById('results').textContent = 'Ready. Open a PDF, then use the extension controls.';
+  results.textContent = 'Ready. Open a PDF, then use the extension controls. Add ?lang=de for German.';
 </script>
 </html>

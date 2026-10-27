@@ -1,0 +1,198 @@
+{
+  "extName": {
+    "message": "StudyDrive PDF Downloader"
+  },
+  "extDescription": {
+    "message": "Speichert die bereits geladene PDF-Vorschau einer StudyDrive-Dokumentseite."
+  },
+  "commandDownload": {
+    "message": "Geladene PDF-Vorschau herunterladen"
+  },
+  "actionTitle": {
+    "message": "StudyDrive PDF Downloader: Download-Steuerung anzeigen"
+  },
+  "actionTitleReady": {
+    "message": "StudyDrive PDF Downloader: geladene PDF-Vorschau bereit"
+  },
+  "actionTitleError": {
+    "message": "StudyDrive PDF Downloader: Das PDF benötigt Aufmerksamkeit"
+  },
+  "hideLabel": {
+    "message": "Download-Steuerung ausblenden"
+  },
+  "hideTitle": {
+    "message": "Ausblenden (über das Symbol in der Symbolleiste wieder anzeigen)"
+  },
+  "primaryWaiting": {
+    "message": "Warte auf Vorschau…"
+  },
+  "primaryLoading": {
+    "message": "Vorschau wird erfasst…"
+  },
+  "primaryDownload": {
+    "message": "PDF herunterladen"
+  },
+  "primaryPreparing": {
+    "message": "PDF wird vorbereitet…"
+  },
+  "primarySuccess": {
+    "message": "Download gestartet"
+  },
+  "primaryRetry": {
+    "message": "Erneut versuchen"
+  },
+  "primaryReload": {
+    "message": "Seite neu laden"
+  },
+  "primaryUnavailable": {
+    "message": "Download nicht verfügbar"
+  },
+  "statusWaiting": {
+    "message": "Warte, bis die Dokumentvorschau geladen ist."
+  },
+  "statusWaitingLong": {
+    "message": "Noch keine Vorschau erkannt. Wenn das Dokument bereits sichtbar ist, lade die Seite neu, damit die Erweiterung das Laden mitbekommt."
+  },
+  "statusLoading": {
+    "message": "Die Vorschau wird beim Laden erfasst…"
+  },
+  "statusPreparing": {
+    "message": "Das PDF wird vorbereitet…"
+  },
+  "statusSuccess": {
+    "message": "Ob der Download abgeschlossen ist, siehst du in den Browser-Downloads."
+  },
+  "progressKnown": {
+    "message": "$PERCENT$ · $RECEIVED$ von $TOTAL$",
+    "placeholders": {
+      "percent": {
+        "content": "$1"
+      },
+      "received": {
+        "content": "$2"
+      },
+      "total": {
+        "content": "$3"
+      }
+    }
+  },
+  "progressUnknown": {
+    "message": "$RECEIVED$ empfangen",
+    "placeholders": {
+      "received": {
+        "content": "$1"
+      }
+    }
+  },
+  "progressLabel": {
+    "message": "Fortschritt der Vorschau-Erfassung"
+  },
+  "technicalDetails": {
+    "message": "Technische Details"
+  },
+  "errorRequestFailed": {
+    "message": "Die Vorschau wurde nicht vollständig geladen. Lade die Seite neu, um es erneut zu versuchen."
+  },
+  "errorHttp": {
+    "message": "StudyDrive hat die Vorschau nicht ausgeliefert. Lade die Seite neu, um es erneut zu versuchen."
+  },
+  "errorPartial": {
+    "message": "Der Viewer hat nur einen Teil dieses PDFs geladen. Teilweise Vorschauen können nicht gespeichert werden."
+  },
+  "errorTooLarge": {
+    "message": "Dieses PDF überschreitet die Grenze von 40 MiB."
+  },
+  "errorIncomplete": {
+    "message": "Die geladene Vorschau war kein vollständiges PDF. Lade die Seite neu, um es erneut zu versuchen."
+  },
+  "errorUnsupported": {
+    "message": "Dieses Vorschauformat wird nicht unterstützt."
+  },
+  "errorReadFailed": {
+    "message": "Die Vorschau konnte nicht gelesen werden. Lade die Seite neu, um es erneut zu versuchen."
+  },
+  "errorChanged": {
+    "message": "Das Dokument hat sich geändert. Versuche es erneut."
+  },
+  "errorBusy": {
+    "message": "Ein Download wird bereits vorbereitet."
+  },
+  "errorNotReady": {
+    "message": "Die Vorschau ist noch nicht bereit."
+  },
+  "errorTimeout": {
+    "message": "Die Vorbereitung des PDFs hat zu lange gedauert. Versuche es erneut."
+  },
+  "errorInvalidData": {
+    "message": "Die vorbereiteten Daten waren kein gültiges PDF. Lade die Seite neu, um es erneut zu versuchen."
+  },
+  "errorNoConfirmation": {
+    "message": "Keine Download-Bestätigung. Prüfe die Browser-Downloads, bevor du es erneut versuchst."
+  },
+  "errorExtensionUnavailable": {
+    "message": "Die Erweiterung wurde aktualisiert oder neu geladen. Lade die Seite neu, um fortzufahren."
+  },
+  "errorRejected": {
+    "message": "Die Download-Anfrage wurde aus Sicherheitsgründen abgelehnt. Lade die Seite neu, um es erneut zu versuchen."
+  },
+  "errorDownloadFailed": {
+    "message": "Der Browser konnte den Download nicht starten."
+  },
+  "onboardingTitle": {
+    "message": "StudyDrive PDF Downloader ist bereit"
+  },
+  "onboardingIntro": {
+    "message": "Speichere die PDF-Vorschau, die StudyDrive bereits in deinem Browser geladen hat."
+  },
+  "onboardingStepOpen": {
+    "message": "Öffne ein Dokument auf studydrive.net und lass die Vorschau laden."
+  },
+  "onboardingStepDownload": {
+    "message": "Klicke in der Ecke auf „PDF herunterladen“ oder drücke $SHORTCUT$.",
+    "placeholders": {
+      "shortcut": {
+        "content": "$1"
+      }
+    }
+  },
+  "onboardingStepHide": {
+    "message": "Steuerung ausgeblendet? Ein Klick auf das Symbol in der Symbolleiste zeigt sie wieder an."
+  },
+  "onboardingReloadTitle": {
+    "message": "StudyDrive schon geöffnet?"
+  },
+  "onboardingReload": {
+    "message": "Lade diese Tabs einmal neu. Die Erweiterung sieht nur Vorschauen, die nach der Installation geladen werden."
+  },
+  "onboardingLimitTitle": {
+    "message": "Vorschau, nicht unbedingt das ganze Dokument"
+  },
+  "onboardingLimit": {
+    "message": "Die gespeicherte Datei ist die Vorschau, die dein Browser geladen hat. Sie kann weniger Seiten als das Original enthalten. Maximale Größe: 40 MiB."
+  },
+  "onboardingPrivacy": {
+    "message": "Alles bleibt in deinem Browser: keine zusätzlichen Dokumentanfragen, keine Analyse, keine externen Server. Nutze nur Dokumente, die du herunterladen darfst."
+  },
+  "onboardingVersion": {
+    "message": "Version $VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "actionTitleWithVersion": {
+    "message": "$TITLE$ (v$VERSION$)",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "version": {
+        "content": "$2"
+      }
+    }
+  },
+  "onboardingShortcutUnset": {
+    "message": "kein Tastenkürzel festgelegt (chrome://extensions/shortcuts)"
+  }
+}
