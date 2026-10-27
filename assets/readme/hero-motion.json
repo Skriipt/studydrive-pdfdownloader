@@ -1,0 +1,35 @@
+{
+  "width": 1200,
+  "fps": 30,
+  "duration": 6.0,
+  "colors": 256,
+  "dither": "none",
+  "clip_to_base_alpha": true,
+  "max_size_mb": 2.0,
+  "reveals": [
+    {
+      "id": "preview-content",
+      "axis": "y",
+      "start": 0.3,
+      "end": 1.4,
+      "exit": {"start": 4.9, "end": 5.7}
+    }
+  ],
+  "layers": [
+    {
+      "id": "export-arrow",
+      "enter": {"start": 1.1, "end": 1.9, "from": [0, -24]},
+      "exit": {"start": 4.9, "end": 5.7, "to": [0, 8]}
+    },
+    {
+      "id": "download-control",
+      "enter": {"start": 1.4, "end": 2.2, "from": [0, 18]},
+      "exit": {"start": 4.9, "end": 5.7, "to": [0, 8]}
+    },
+    {
+      "id": "ready-status",
+      "enter": {"start": 1.9, "end": 2.5, "from": [0, 0]},
+      "exit": {"start": 4.9, "end": 5.7, "to": [0, 0]}
+    }
+  ]
+}
