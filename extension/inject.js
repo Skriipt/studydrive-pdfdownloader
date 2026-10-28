@@ -31,6 +31,13 @@
     emitStatus();
   }
 
+  function cancelActiveRead() {
+    if (!activeRead) return;
+    activeRead.cancelled = true;
+    activeRead.reader?.cancel().catch(() => console.warn('[SD] Could not cancel the old PDF capture.'));
+    activeRead = null;
+  }
+
   function syncDocument() {
     const nextId = utils.getDocumentId(location.href);
     const next = utils.getDocumentMetadata(window.sdWindow?.document, location.href);
@@ -40,11 +47,7 @@
       metadata = next;
       version++;
       buffer = null;
-      if (activeRead) {
-        activeRead.cancelled = true;
-        activeRead.reader?.cancel().catch(() => console.warn('[SD] Could not cancel the old PDF capture.'));
-        activeRead = null;
-      }
+      cancelActiveRead();
       setStatus('waiting');
     }
   }
@@ -69,20 +72,23 @@
   }
 
   function beginCapture(request, status, headers) {
-    if (!matchesRequest(request) || activeRead) return null;
+    if (!matchesRequest(request)) return null;
     if (status === 206 || headers('content-range')) {
-      setStatus('error', 'Only part of the PDF was loaded. A complete preview response is required.', 'partial');
+      if (!activeRead) setStatus('error', 'Only part of the PDF was loaded. A complete preview response is required.', 'partial');
       return null;
     }
     if (status !== 200) {
-      setStatus('error', `The preview request failed (HTTP ${status}). Reload the document to try again.`, 'http');
+      if (!activeRead) setStatus('error', `The preview request failed (HTTP ${status}). Reload the document to try again.`, 'http');
       return null;
     }
     const total = Number(headers('content-length'));
     if (total > utils.MAX_PDF_BYTES) {
-      setStatus('error', 'The PDF exceeds the 40 MiB download limit.', 'tooLarge');
+      if (!activeRead) setStatus('error', 'The PDF exceeds the 40 MiB download limit.', 'tooLarge');
       return null;
     }
+    // A retry may succeed while an earlier response is still loading. Keep one reader,
+    // and prevent the replaced reader's completion or failure from changing its state.
+    cancelActiveRead();
     // Content-Length is only a progress hint; it may describe compressed bytes.
     activeRead = { version, cancelled: false, reader: null, received: 0, reported: 0,
       total: Number.isSafeInteger(total) && total > 0 ? total : 0 };
@@ -194,7 +200,9 @@
       for (const event of ['error', 'abort', 'timeout']) {
         this.addEventListener(event, () => requestFailed(requests.get(this)));
       }
-      this.addEventListener('load', () => {
+      // DONE precedes load, where the viewer may transfer its response to a worker.
+      this.addEventListener('readystatechange', () => {
+        if (this.readyState !== 4) return;
         const current = requests.get(this);
         if (!current) return;
         const ticket = beginCapture(current, this.status, name => this.getResponseHeader(name));
@@ -202,9 +210,11 @@
         void (async () => {
           try {
             const data = this.response;
-            if (data instanceof Blob && data.size > utils.MAX_PDF_BYTES) throw captureError('tooLarge', 'The PDF exceeds the 40 MiB download limit.');
-            const bytes = data instanceof Blob ? await data.arrayBuffer() : data;
-            if (!(bytes instanceof ArrayBuffer)) throw captureError('unsupported', 'The preview used an unsupported response format.');
+            if (!(data instanceof Blob || data instanceof ArrayBuffer)) throw captureError('unsupported', 'The preview used an unsupported response format.');
+            const size = data instanceof Blob ? data.size : data.byteLength;
+            if (size > utils.MAX_PDF_BYTES) throw captureError('tooLarge', 'The PDF exceeds the 40 MiB download limit.');
+            // Own the bytes before the viewer mutates or transfers its response to a worker.
+            const bytes = data instanceof Blob ? await data.arrayBuffer() : data.slice(0);
             rememberPdf(bytes, ticket);
           } catch (failure) {
             captureFailed(ticket, failure);

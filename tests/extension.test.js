@@ -34,6 +34,11 @@ function environment(extra = {}) {
     open() {}
     send() {}
     getResponseHeader(name) { return this.headers?.[name.toLowerCase()] || null; }
+    complete() {
+      this.readyState = 4;
+      this.dispatchEvent(new Event('readystatechange'));
+      this.dispatchEvent(new Event('load'));
+    }
   }
   const timers = new Map();
   const intervals = [];
@@ -206,23 +211,90 @@ test('late metadata becomes ready and navigation clears it, including navigation
   assert.notEqual(status(context).state, 'ready');
 });
 
-test('XHR reuse has one load listener; rejected Blob reads become visible errors', async () => {
+test('XHR reuse has one ready-state listener; rejected Blob reads become visible errors', async () => {
   const { context, XHR } = environment();
   load(context, 'inject.js');
   const xhr = new XHR(); let added = 0;
   const add = xhr.addEventListener.bind(xhr);
-  xhr.addEventListener = (...args) => { if (args[0] === 'load') added++; return add(...args); };
+  xhr.addEventListener = (...args) => { if (args[0] === 'readystatechange') added++; return add(...args); };
   xhr.status = 200; xhr.headers = { 'content-type': 'application/pdf' };
   xhr.response = new TextEncoder().encode(PDF).buffer;
-  for (let i = 0; i < 3; i++) { xhr.open('GET', SOURCE); xhr.send(); xhr.dispatchEvent(new Event('load')); }
+  for (let i = 0; i < 3; i++) { xhr.open('GET', SOURCE); xhr.send(); xhr.complete(); }
   await tick();
   assert.equal(added, 1);
   assert.equal(status(context).state, 'ready');
   const bad = new XHR(); bad.status = 200; bad.headers = xhr.headers;
   bad.response = new Blob([PDF]); bad.response.arrayBuffer = async () => { throw new Error('fixture read error'); };
   context.history.replaceState(null, '', '/de'); context.history.replaceState(null, '', PAGE);
-  bad.open('GET', SOURCE); bad.send(); bad.dispatchEvent(new Event('load')); await tick();
+  bad.open('GET', SOURCE); bad.send(); bad.complete(); await tick();
   assert.equal(status(context).state, 'error');
+});
+
+test('XHR capture owns its bytes after the viewer changes or transfers the response', async () => {
+  for (const change of [bytes => new Uint8Array(bytes).fill(0),
+    bytes => structuredClone(bytes, { transfer: [bytes] })]) {
+    const { context, XHR } = environment();
+    load(context, 'inject.js');
+    const xhr = new XHR();
+    xhr.status = 200;
+    xhr.response = new TextEncoder().encode(PDF).buffer;
+    xhr.open('GET', SOURCE); xhr.send(); xhr.complete();
+    assert.equal(status(context).state, 'ready');
+    change(xhr.response);
+    const result = await exportPdf(context);
+    assert.equal(result.size, PDF.length);
+    assert.equal(atob(result.base64), PDF);
+  }
+});
+
+test('XHR capture waits for DONE instead of inspecting an unfinished response', () => {
+  const { context, XHR } = environment();
+  load(context, 'inject.js');
+  const xhr = new XHR();
+  xhr.open('GET', SOURCE); xhr.send();
+  xhr.readyState = 3;
+  xhr.dispatchEvent(new Event('readystatechange'));
+  assert.equal(status(context).state, 'waiting');
+  xhr.status = 200;
+  xhr.response = new TextEncoder().encode(PDF).buffer;
+  xhr.complete();
+  assert.equal(status(context).state, 'ready');
+});
+
+test('a complete overlapping preview replaces a failed capture without consuming either viewer response', async () => {
+  let controller;
+  let requests = 0;
+  const { context } = environment({ fetch: async () => ++requests === 1 ?
+    new Response(new ReadableStream({ start(value) { controller = value; } })) : new Response(PDF) });
+  load(context, 'inject.js');
+  const first = await context.fetch(SOURCE);
+  const second = await context.fetch(SOURCE);
+  assert.equal(await second.text(), PDF);
+  const truncated = '%PDF-1.7\ntruncated';
+  controller.enqueue(new TextEncoder().encode(truncated)); controller.close();
+  assert.equal(await first.text(), truncated);
+  await tick(); await tick();
+  assert.equal(status(context).state, 'ready');
+  assert.equal(atob((await exportPdf(context)).base64), PDF);
+});
+
+test('unsupported overlapping responses leave an active complete preview capture alone', async () => {
+  for (const [httpStatus, headers] of [[206, { 'content-range': 'bytes 0-10/20' }], [403, {}],
+    [200, { 'content-length': String(41 * 1024 * 1024) }]]) {
+    let controller;
+    let requests = 0;
+    const { context } = environment({ fetch: async () => ++requests === 1 ?
+      new Response(new ReadableStream({ start(value) { controller = value; } })) :
+      new Response(PDF, { status: httpStatus, headers }) });
+    load(context, 'inject.js');
+    const first = await context.fetch(SOURCE);
+    await context.fetch(SOURCE);
+    assert.equal(status(context).state, 'loading');
+    controller.enqueue(new TextEncoder().encode(PDF)); controller.close();
+    assert.equal(await first.text(), PDF);
+    await tick(); await tick();
+    assert.equal(atob((await exportPdf(context)).base64), PDF);
+  }
 });
 
 function events() {
